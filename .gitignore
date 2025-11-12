@@ -4,3 +4,6 @@
 *.csv
 .venv/
 __pycache__/
+.cursor/
+.pytest_cache/
+.vscode/
