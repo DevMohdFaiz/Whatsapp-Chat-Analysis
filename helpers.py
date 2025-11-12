@@ -48,6 +48,12 @@ def extract_chat_data(whatsapp_file_path):
 
 
 def preprocess_df(df: pd.DataFrame):
+    """
+    Preprocess and clean the dataframe
+
+    Args:
+        df: pandas dataframe
+    """
     df = df.iloc[1:, :]
     df['sender'].replace('tmak 3', 'Tmak', inplace=True)
     df = df[~df['message'].isin(['<Media omitted>', 'Waiting for this message'])].reset_index()
