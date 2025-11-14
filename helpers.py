@@ -2,6 +2,9 @@ import re
 import pandas as pd
 import numpy as np
 from zipfile import ZipFile
+from vaderSentiment import vaderSentiment
+
+vader_analyzer = vaderSentiment.SentimentIntensityAnalyzer()
 
 
 def unzip_chat(whatsapp_file_path):
@@ -15,18 +18,19 @@ def unzip_chat(whatsapp_file_path):
         whatsapp_chat = file.readlines()
     return whatsapp_chat
 
-def extract_chat_data(whatsapp_file_path):
+def extract_chat_data(whatsapp_chats):
     """
     Extracts important information like date, time, sender and message content from whatsapp.zip file 
     and returns a pandas dataframe with the columns: date, time, sender and message
-    Params: whatsapp_file_path= Path of the whatsapp zip file
+    Args
+        whatsapp_file_path: Path of the whatsapp zip file
     """
-    whatsapp_chat = unzip_chat(whatsapp_file_path=whatsapp_file_path)
+
     extracted_data_dict = {
         'date': [], 'time': [], 'sender': [], 'message': []
     }
     
-    for chat in whatsapp_chat:
+    for chat in whatsapp_chats:
         try:
             date, time = re.search(r"\d{2}/\d{2}/\d{4}", chat), re.search(r"\d{2}:\d{2}", chat)
             sender, message = re.search(r"-\s*([^:]+):", chat), re.search(r": (.+)\n$", chat)
@@ -48,6 +52,12 @@ def extract_chat_data(whatsapp_file_path):
 
 
 def preprocess_df(df: pd.DataFrame):
+    """
+    Preprocess and clean the dataframe
+
+    Args:
+        df: pandas dataframe
+    """
     df = df.iloc[1:, :]
     df['sender'].replace('tmak 3', 'Tmak', inplace=True)
     df = df[~df['message'].isin(['<Media omitted>', 'Waiting for this message'])].reset_index()
@@ -70,4 +80,23 @@ def preprocess_df(df: pd.DataFrame):
     df = df.reset_index().drop('index', axis=1)
     return df
 
-# extracted_chat_data = extract_chat_data(whatsapp_file="WhatsApp Chat with The Boys")
+
+
+
+def vader_sent_analyzer(df):
+    messages = df['message']
+    sentiment_results_dict = {'sentiment': [], 'sentiment_score': []}
+    for msg in messages:
+        sentiment_score= vader_analyzer.polarity_scores(msg)['compound']
+        if (sentiment_score>=0.5):
+            sentiment = 1
+        elif (sentiment_score> -0.5 and sentiment_score<0.5):
+            sentiment = 0.5
+        else:
+            sentiment = 0
+        sentiment_results_dict['sentiment'].append(sentiment)
+        sentiment_results_dict['sentiment_score'].append(sentiment_score)
+    # sentiment_analysis_results= vader_sent_analyzer(messages=messages)
+    df['sentiment'] = sentiment_results_dict['sentiment']
+    df['sentiment_score'] = sentiment_results_dict['sentiment_score']
+    return df
