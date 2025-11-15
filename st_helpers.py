@@ -20,8 +20,10 @@ def unzip_chat_for_st(uploaded_file):
             else:
                 txt_file = unzipped_file[0]
                 with zip_f.open(txt_file, "r") as file:
-                    file_content = file.read().decode("utf")
-    return file_content
+                    file_content = file.read().decode("utf-8")
+                    file_content = file_content.splitlines(keepends=True)
+        return file_content
+
 
 @st.cache_data(show_spinner=True)
 def generate_word_cloud(texts):

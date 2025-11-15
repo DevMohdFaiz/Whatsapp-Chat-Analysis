@@ -19,31 +19,21 @@ import matplotlib.pyplot as plt
 importlib.reload(helpers)
 importlib.reload(st_helpers)
 from helpers import extract_chat_data, preprocess_df, vader_sent_analyzer
-from st_helpers import generate_word_cloud
+from st_helpers import unzip_chat_for_st, generate_word_cloud
 
-# Page config
-st.set_page_config(
-    page_title="WhatsApp Sentiment Analyzer",
-    page_icon="💬",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
-# Custom CSS
+st.set_page_config(page_title="WhatsApp Chat Analyzer", page_icon="💬", layout="centered", initial_sidebar_state="expanded")
 st.markdown("""
     <style>
     .main {
         padding: 0rem 1rem;
-    }
-    .stMetric {
+    }.stMetric {
         background-color: #f0f2f6;
         padding: 15px;
         border-radius: 10px;
-    }
-    h1 {
+    }.h1 {
         color: #1f77b4;
-    }
-    .insight-box {
+    }.insight-box {
         background-color: #e8f4f8;
         color: black;
         padding: 10px;
@@ -52,14 +42,14 @@ st.markdown("""
         margin: 10px 0;
         height: 43vh;
     }.metric-card {
-    background-color: #1e1e1e;
-    color: white;
-    padding: 16px 20px;
-    border-radius: 12px;
-    border-left: 6px solid #1f77b4;
-    margin: 8px 0;
-    font-size: 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        background-color: #1e1e1e;
+        color: white;
+        padding: 16px 20px;
+        border-radius: 12px;
+        border-left: 6px solid #1f77b4;
+        margin: 8px 0;
+        font-size: 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     }.metric-card h3 {
         margin: 0;
         padding: 0;
@@ -73,22 +63,49 @@ st.markdown("""
     }.metric-card small {
         font-size: 14px;
         opacity: 0.8;
+    }.member-profile-card {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        border: 2px solid #e0e0e0;
+        text-align: center;
+        height: 30vh;
+    }.member-profile-label {
+        color: #666;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }.member-profile-value {
+        color: #1f77b4;
+        font-size: 32px;
+        font-weight: bold;
+        margin: 10px 0;
+    }.member-profile-delta {
+        color: #333;
+        font-size: 14px;
+        background-color: #f0f0f0;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }.summary-card{
+        background-color: #f8f9fa;
+        padding: 30px;
+        border-radius: 10px;
+        border-left: 5px solid #1f77b4;
+        margin-top: 30px;
+    }.summary-card-inner{
+        font-size: 16px;
+        color: #333; 
+        line-height: 1.8;       
     }
-
     </style>
 """, unsafe_allow_html=True)
 
-# Title
 st.title("💬 WhatsApp Chat Sentiment Analyzer")
 st.markdown("---")
 
-# Sidebar
 with st.sidebar:
-    st.header("📊 Dashboard Controls")
-    
-    # File uploader
-    uploaded_file = st.file_uploader("Upload WhatsApp Chat (.txt)", type=['txt'])
-    
+    st.header("📊 Dashboard Controls")    
+    uploaded_file = st.file_uploader("Upload WhatsApp Chat (.txt)", type=['txt'])    
     st.markdown("---")
     st.markdown("### About")
     st.info("""
@@ -103,24 +120,7 @@ with st.sidebar:
 uploaded_file = st.file_uploader("Upload your file")
 
 
-def unzip_chat_for_st(uploaded_file):
-    # st.header(bool(uploaded_file is not None))
-    if uploaded_file is not None:
-        zip_bytes = io.BytesIO(uploaded_file.read())
-
-        with ZipFile(zip_bytes, "r") as zip_f:
-            unzipped_file = [f for f in zip_f.namelist() if f.endswith('.txt')]
-            if not unzipped_file:
-                st.warning("No .txt file(s) found!")
-            else:
-                txt_file = unzipped_file[0]
-                with zip_f.open(txt_file, "r") as file:
-                    file_content = file.read().decode("utf-8")
-                    file_content = file_content.splitlines(keepends=True)
-        return file_content
-
-
-st.set_page_config(page_title="Performance Dashboard", layout="centered")
+# st.set_page_config(page_title="Performance Dashboard", layout="wide")
 
 
 if uploaded_file is not None:
@@ -136,7 +136,7 @@ if uploaded_file is not None:
     with col1:    
         st.markdown(f"""
         <div class="metric-card"><h3>Total Messages</h3>
-            <p><strong>{len(df)}</strong><strong></strong></p>
+            <p><strong>{len(df):,}</strong><strong></strong></p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -146,15 +146,21 @@ if uploaded_file is not None:
             <p><strong>{df['sender'].nunique()}</strong><strong></strong></p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     with col3:
+        st.markdown(f"""
+        <div class="metric-card"><h3>Avg. msg. length</h3>
+            <p><strong>{int(df['character_length'].mean())}</strong><strong></strong></p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col4:
         st.markdown(f"""
         <div class="metric-card"><h3>Avg. word length</h3>
             <p><strong>{int(df['word_length'].mean())}</strong><strong></strong></p>
         </div>
         """, unsafe_allow_html=True)
-    
-    # Key Insights Section
+
     st.header("💡 Key Insights")
     
     col1, col2, col3 = st.columns(3)
@@ -165,7 +171,7 @@ if uploaded_file is not None:
         
         st.markdown(f"""
         <div class="insight-box">
-            <h3>😊 Most Positive Member</h3>
+            <h3>Most Positive Member</h3>
             <p><strong>{most_positive}</strong> has the highest average sentiment score of <strong>{most_positive_score:.3f}</strong></p>
             <p>They tend to bring positive vibes to the conversation!</p>
         </div>
@@ -177,7 +183,7 @@ if uploaded_file is not None:
         
         st.markdown(f"""
         <div class="insight-box">
-            <h3>🌟 Happiest Day</h3>
+            <h3>Happiest Day</h3>
             <p><strong>{happiest_day}</strong> was the most positive day with a sentiment score of <strong>{happiest_score:.3f}</strong></p>
             <p>Something great must have happened!</p>
         </div>
@@ -187,25 +193,26 @@ if uploaded_file is not None:
         most_active_member = df['sender'].value_counts()        
         st.markdown(f"""
         <div class="insight-box">
-            <h3>🌟 Most active member</h3>
+            <h3>Most active member</h3>
             <p><strong>{most_active_member.index[0]}</strong> is the most active group member <strong></strong></p>
-            <p>They have sent a total of <strong>{most_active_member.values[0]}</strong> messages!</p>
+            <p>They have sent a total of <strong>{most_active_member.values[0]:,}</strong> messages!</p>
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Visualization Tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "👥 Members", "⏰ Time Patterns", "💬 Messages", "Others"])
     
-    with tab1:
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "👥 Members Profile", "⏰ Time Patterns", "💬 Messages", "Others"])
+    
+    with tab1:        
+        fig = px.bar(df['sender'].value_counts().sort_values(ascending=False), orientation='v', title='Group members message count')
+        fig.update_layout(xaxis_title='Members', yaxis_title='No. of messages', showlegend=False, height=1000)
+        st.plotly_chart(fig, use_container_width=False)
         col1, col2 = st.columns(2)        
         with col1:
             st.subheader("Sentiment Distribution")
             sentiment_counts = df['sentiment'].value_counts()
-            fig = px.pie(values=sentiment_counts.values, names=['Neutral', 'Positive', 'Negative'], color=['red', 'green', 'yellow'],
-                hole=0.5, 
-            )
+            fig = px.pie(values=sentiment_counts.values, names=['Neutral', 'Positive', 'Negative'], color=['red', 'green', 'yellow'], hole=0.5)
             fig.update_traces(textposition='inside', textinfo='percent+label')
             fig.update_layout({'height':400})
             st.plotly_chart(fig, use_container_width=True)
@@ -220,41 +227,216 @@ if uploaded_file is not None:
 
     
     with tab2:
-        st.subheader("Sentiment by Member")
-        fig = px.bar(df['sender'].value_counts().sort_values(ascending=False), orientation='v', title='Group members message count')
-        fig.update_layout(xaxis_title='Members', yaxis_title='No. of messages',)
-        st.plotly_chart(fig, use_container_width=False)
-        col1, col2= st.columns(2)
+        st.subheader("Members Profile")
+        selected_member = st.selectbox("Select a member to analyze:",options=sorted(df['sender'].unique()),index=None)        
+        if selected_member is not None:
+            member_df = df[df['sender'] == selected_member].copy()   
+            avg_msg_length = member_df['character_length'].mean()         
+            st.markdown("---")
+            st.markdown(f"## 📊 {selected_member}'s Profile")
+
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.markdown(f"""
+                    <div class="member-profile-card">
+                        <div class="member-profile-label">Total Messages</div>
+                        <div class="member-profile-value">{len(member_df):,}</div>
+                        <div class="member-profile-delta">{len(member_df)/len(df)*100:.1f}% of total</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            with col2:
+                avg_sentiment = member_df['sentiment_score'].mean()
+                sentiment = "Positive" if avg_sentiment > 0 else "Negative"
+                st.markdown(f"""
+                    <div class="member-profile-card">
+                        <div class="member-profile-label">Average Sentiment</div>
+                        <div class="member-profile-value">{round(avg_sentiment, 2)}</div>
+                        <div class="member-profile-delta">{sentiment}</div>                          
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                volatility = member_df['sentiment_score'].std()
+                stability = "Stable" if volatility < 0.3 else "Unstable"
+                st.markdown(f"""
+                    <div class="member-profile-card">
+                        <div class="member-profile-label">Mood Volatility</div>
+                        <div class="member-profile-value">{volatility:.3f}</div> 
+                        <div class="member-profile-delta">{stability}</div>                                                 
+                    </div>
+                """, unsafe_allow_html=True)
+
+            with col4:                
+                avg_msg_len_comment = "Verbose" if avg_msg_length > 50 else "Concise"
+                st.markdown(f"""
+                    <div class="member-profile-card">
+                        <div class="member-profile-label">Avg msg. length</div>
+                        <div class="member-profile-value">{avg_msg_length:.0f} chars</div>
+                        <div class="member-profile-delta">{avg_msg_len_comment}</div>                          
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("---")          
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### 🎭 Personality Traits")      
+                
+                traits = []                            
+                if volatility > 0.4:
+                    traits.append("🎢 **Emotional Rollercoaster** - Mood swings often")
+                elif volatility < 0.2:
+                    traits.append("😌 **Steady Eddie** - Very consistent mood")
+                
+                if avg_msg_length > 100:
+                    traits.append("📝 **The Storyteller** - Loves long messages")
+                elif avg_msg_length < 30:
+                    traits.append("⚡ **Quick Replier** - Short and sweet")
+                
+                member_msg_pct = len(member_df) / len(df) * 100
+                if member_msg_pct > 30:
+                    traits.append("💬 **Chatty Cathy** - Most active member!")
+                elif member_msg_pct < 10:
+                    traits.append("🤫 **The Lurker** - Quiet but present")
+                                
+                for trait in traits:
+                    st.markdown(trait)
+                    st.markdown("")
+            
+            with col2:
+                st.markdown("### 📈 Activity Stats")
+                
+                # Most active time
+                most_active_hour = member_df['hour'].mode()[0] if len(member_df) > 0 else 0
+                st.markdown(f"⏰ **Most Active Hour:** {most_active_hour}:00")
+                
+                most_active_day = member_df['day'].mode()[0] if len(member_df) > 0 else "N/A"
+                st.markdown(f"📅 **Most Active Day:** {most_active_day}")
+                
+                
+                daily_activity = member_df['date'].value_counts().sort_index()
+                longest_streak = 0
+                for i in range(len(daily_activity) - 1):
+                    if (daily_activity.index[i+1] - daily_activity.index[i]).days == 1:
+                        longest_streak += 1
+                st.markdown(f"🔥 **Longest Streak:** {longest_streak} days")
+                
+                st.markdown(f"📊 **Total Contribution:** {member_msg_pct:.1f}% of all messages")
+            
+            st.markdown("---")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### 📊 Sentiment Distribution")
+                sentiment_counts = member_df['sentiment'].value_counts()
+                fig = px.pie(values=sentiment_counts.values,names=sentiment_counts.index,color=sentiment_counts.index,
+                    color_discrete_map={'positive': '#2ecc71', 'neutral': '#95a5a6', 'negative': '#e74c3c'}, hole=0.5)
+                fig.update_traces(textposition='inside', textinfo='percent+label')
+                fig.update_layout(height=300, showlegend=False, annotations=[dict(text=selected_member, x=0.5, y=0.5, font_size=16, showarrow=False)])
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                st.markdown("### 🎯 Sentiment Over Time")
+                member_daily = member_df.groupby(member_df['date'])['sentiment_score'].mean().reset_index()
+                fig = px.line(
+                    member_daily,
+                    x='date',
+                    y='sentiment_score',
+                    markers=True
+                )
+                fig.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Neutral")
+                fig.update_layout(
+                    xaxis_title="",
+                    yaxis_title="Sentiment Score",
+                    height=300,
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### ⏰ Activity by Hour")
+                hourly_activity = member_df['hour'].value_counts().sort_index()
+                fig = px.bar(
+                    x=hourly_activity.index,
+                    y=hourly_activity.values,
+                    color=hourly_activity.values,
+                    color_continuous_scale='Blues'
+                )
+                fig.update_layout(
+                    xaxis_title="Hour of Day",
+                    yaxis_title="Message Count",
+                    height=300,
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                st.markdown("### 📅 Activity by Day")
+                day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                day_activity = member_df['day'].value_counts().reindex(day_order, fill_value=0)
+                fig = px.bar(
+                    x=day_activity.index,
+                    y=day_activity.values,
+                    color=day_activity.values,
+                    color_continuous_scale='Greens'
+                )
+                fig.update_layout(
+                    xaxis_title="",
+                    yaxis_title="Message Count",
+                    height=300,
+                    showlegend=False
+                )
+                fig.update_xaxes(tickangle=45)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("---")
+            
+            # Member's Most Emotional Messages
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### Most Positive Messages")
+                top_positive = member_df.nlargest(3, 'sentiment_score')[['message', 'sentiment_score', 'date']]
+                for idx, row in top_positive.iterrows():
+                    with st.expander(f"Score: {row['sentiment_score']:.3f} - {row['date']}"):
+                        st.write(row['message'])
+            
+            with col2:
+                st.markdown("### Most Negative Messages")
+                top_negative = member_df.nsmallest(3, 'sentiment_score')[['message', 'sentiment_score', 'date']]
+                for idx, row in top_negative.iterrows():
+                    with st.expander(f"Score: {row['sentiment_score']:.3f} - {row['date']}"):
+                        st.write(row['message'])
+
+        # member_sentiment = df.groupby('sender')['sentiment_score'].mean().sort_values(ascending=True)
+        # fig = px.bar(x=member_sentiment.values, y=member_sentiment.index, orientation='v', color=member_sentiment.values, color_continuous_scale=["#1b84ee", "#151bb8", "#0058f0"])
+        # fig.update_layout(xaxis_title="Average Sentiment Score",yaxis_title="Member",height=600,showlegend=False)
+        # st.plotly_chart(fig, use_container_width=True)
         
-        with col1:
-            member_sentiment = df.groupby('sender')['sentiment_score'].mean().sort_values(ascending=True)
-            fig = px.bar(x=member_sentiment.values, y=member_sentiment.index, orientation='h', color=member_sentiment.values, color_continuous_scale=["#1b84ee", "#151bb8", "#0058f0"])
-            fig.update_layout(xaxis_title="Average Sentiment Score",yaxis_title="Member",height=600,showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            member_dist = df.groupby(['sender', 'sentiment']).size().unstack(fill_value=0)
-            fig = px.bar(member_dist,  color_discrete_map={'positive': "#1b84ee",'neutral': "#151bb8",'negative': "#0058f0"})
-            fig.update_layout(xaxis_title="Member",yaxis_title="Message Count",height=400)
-            st.plotly_chart(fig, use_container_width=True)
+        # with col2:
+        #     member_dist = df.groupby(['sender', 'sentiment']).size().unstack(fill_value=0)
+        #     fig = px.bar(member_dist,  color_discrete_map={'positive': "#1b84ee",'neutral': "#151bb8",'negative': "#0058f0"})
+        #     fig.update_layout(xaxis_title="Member",yaxis_title="Message Count",height=400)
+        #     st.plotly_chart(fig, use_container_width=True)
     
     with tab3:        
         st.subheader("Time Patterns")
         time_order_dict = {
-        'day_order':['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        'day_order':['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
         'month_order': ['June', 'July', 'August', 'September', 'October'],
-        'hour_order': ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
-            '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00']
+        'hour_order': ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+                        '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00']
         }
         freq_cols = ['date', 'month', 'day', 'hour']
         fig = make_subplots(rows=len(freq_cols), cols=1, subplot_titles=[f"Message frequency by {col.capitalize()}" for col in freq_cols])
 
         for idx, col_name in enumerate(freq_cols):
             df_plot = df.groupby(col_name).size().reindex(time_order_dict[f"{col_name}_order"]).reset_index(name='count') if col_name != 'date' else df.groupby(col_name).size().reset_index(name='count')
-            # if col_name != 'date': 
-            #     df_plot = df.groupby(col_name).size().reindex(time_order_dict[f"{col_name}_order"]).reset_index(name='count')
-            # else:
-            #     df_plot = df.groupby(col_name).size().reset_index(name='count')
             trace = px.line(df_plot, x=col_name, y='count').data[0]
             fig.add_trace(trace, row=idx + 1,  col=1)
         fig.update_layout(height=1000, title_text="Message Frequency Distributions")
@@ -272,46 +454,22 @@ if uploaded_file is not None:
         fig = px.line(df.groupby('date')['message'].count(), title='Message Count Over time')
         fig.update_layout({'xaxis_title': 'Date', 'yaxis_title': 'No. of messages', 'showlegend':False})
         st.plotly_chart(fig, use_container_width=True)
-        # st.subheader("Time-Based Patterns")
+
+        st.subheader("Sentiment Patterns Over Time")        
+        col1, col2 = st.columns(2)        
+        with col1:
+            hourly_sentiment = df.groupby('hour')['sentiment_score'].mean()
+            fig = px.line(x=hourly_sentiment.index, y=hourly_sentiment.values, markers=True)
+            fig.add_hline(y=0, line_dash="dash", line_color="red")
+            fig.update_layout(xaxis_title="Hour of Day",yaxis_title="Average Sentiment Score",title="Mood Throughout the Day",height=400)
+            st.plotly_chart(fig, use_container_width=True)
         
-        # col1, col2 = st.columns(2)
-        
-        # with col1:
-        #     hourly_sentiment = df.groupby('hour')['sentiment_score'].mean()
-        #     fig = px.line(
-        #         x=hourly_sentiment.index,
-        #         y=hourly_sentiment.values,
-        #         markers=True
-        #     )
-        #     fig.add_hline(y=0, line_dash="dash", line_color="red")
-        #     fig.update_layout(
-        #         xaxis_title="Hour of Day",
-        #         yaxis_title="Average Sentiment Score",
-        #         title="Mood Throughout the Day",
-        #         height=400
-        #     )
-        #     st.plotly_chart(fig, use_container_width=True)
-        
-    #     with col2:
-    #         df['day_name'] = df['datetime'].dt.day_name()
-    #         day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    #         daily_sentiment = df.groupby('day_name')['sentiment_score'].mean().reindex(day_order)
-            
-    #         fig = go.Figure(data=[
-    #             go.Bar(
-    #                 x=daily_sentiment.index,
-    #                 y=daily_sentiment.values,
-    #                 marker_color=['green' if x > 0 else 'red' for x in daily_sentiment.values]
-    #             )
-    #         ])
-    #         fig.add_hline(y=0, line_dash="dash", line_color="black")
-    #         fig.update_layout(
-    #             xaxis_title="Day of Week",
-    #             yaxis_title="Average Sentiment Score",
-    #             title="Which Days Are Happiest?",
-    #             height=400
-    #         )
-    #         st.plotly_chart(fig, use_container_width=True)
+        with col2:
+            daily_sentiment = df.groupby('day')['sentiment_score'].mean().reindex(time_order_dict['day_order'])            
+            fig = go.Figure([go.Bar(x=daily_sentiment.index,y=daily_sentiment.values,marker_color=['green' if x > 0 else 'red' for x in daily_sentiment.values])])
+            fig.add_hline(y=0, line_dash="dash", line_color="black")
+            fig.update_layout(xaxis_title="Day of Week",yaxis_title="Average Sentiment Score",title="Which Days Are Happiest?",height=400)
+            st.plotly_chart(fig, use_container_width=True)
     
     with tab4:
         st.subheader("Messages")
@@ -326,81 +484,11 @@ if uploaded_file is not None:
             fig.update_layout(title=f"{chosen_member}'s Frequent Words",margin=dict(l=0, r=0, t=50, b=0),xaxis_visible=False,yaxis_visible=False)
             fig.add_trace(go.Image(z=word_cloud))
             fig.update_traces(zsmooth=False)
-            st.plotly_chart(fig, use_container_width=True)
-        
-
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("### 🌟 Most Positive Messages")
-            top_positive = df.nlargest(5, 'sentiment_score')[['sender', 'message', 'sentiment_score']]
-            for idx, row in top_positive.iterrows():
-                st.markdown(f"""
-                **{row['sender']}** (Score: {row['sentiment_score']:.3f})  
-                _{row['message'][:100]}..._
-                """)
-                st.markdown("---")
-        
-        with col2:
-            st.markdown("### 💔 Most Negative Messages")
-            top_negative = df.nsmallest(5, 'sentiment_score')[['sender', 'message', 'sentiment_score']]
-            for idx, row in top_negative.iterrows():
-                st.markdown(f"""
-                **{row['sender']}** (Score: {row['sentiment_score']:.3f})  
-                _{row['message'][:100]}..._
-                """)
-                st.markdown("---")
-    
-    # # Download section
-    # st.markdown("---")
-    # st.header("📥 Export Results")
-    
-    # col1, col2, col3 = st.columns(3)
-    
-    # with col1:
-    #     csv = df.to_csv(index=False).encode('utf-8')
-    #     st.download_button(
-    #         label="Download CSV",
-    #         data=csv,
-    #         file_name="sentiment_analysis.csv",
-    #         mime="text/csv"
-    #     )
-    col1, col2= st.columns(2)
-    # with st.container():
-        # Create summary report
-    st.markdown(
-         f"""
-        . * 5
-        WhatsApp Sentiment Analysis Report
-        
-        
-        Total Messages: {len(df)}
-        Date Range: {df['date'].min()} to {df['date'].max()}
-        
-        Overall Sentiment:
-        - Average Score: {df['sentiment_score'].mean():.3f}
-        # - Positive: {(df['sentiment']=='positive').sum()} (df['sentiment']==1).sum() / len(df)*100
-        - Neutral: {(df['sentiment']=='neutral').sum()} ({(df['sentiment']==0.5).sum()/len(df)*100:.1f}%)
-        - Negative: {(df['sentiment']=='negative').sum()} ({(df['sentiment']==0).sum()/len(df)*100:.1f}%)
-        
-    #     Most Positive Member: {most_positive}
-    #     Happiest Day: {happiest_day}
-    #     """
-    ) 
-    #     st.download_button(
-    #         label="Download Report",
-    #         data=summary,
-    #         file_name="sentiment_report.txt",
-    #         mime="text/plain"
-    #     )
-    
-    # with col3:
-    #     st.info("More export options coming soon!")
+            st.plotly_chart(fig, use_container_width=True)                     
 
 
     with tab5:
         st.header("Others")
-        st.subheader("Choose to see most/lest active members")
         label = st.selectbox("Choose to see top/least active members", options=['Top', 'Least'], index=None)
         if label== 'Top':
             chosen_members = df['sender'].value_counts().reset_index().rename({'sender': 'member', 'count':'message_count'}, axis=1).nlargest(10, 'message_count')
@@ -415,8 +503,9 @@ if uploaded_file is not None:
             ).properties(width=500, height=550, title=f'{label} active group members').configure_axis(grid=False)
             st.altair_chart(chart, use_container_width=True)
 
+        
+
 else:
-    # Welcome screen
     st.markdown("""
     ## 👋 Welcome to WhatsApp Sentiment Analyzer!
     
