@@ -8,30 +8,59 @@ import json
 from typing import Dict, Optional, List
 import pandas as pd
 
-from .data_extraction import extract_chat_data, detect_chat_type
-from .data_cleaning import preprocess_chat_data
-from .data_wrangling import enrich_dataframe
-from .nlp_analysis import add_sentiment_features
-from .visualization import (
-    plot_message_frequency,
-    plot_temporal_distribution,
-    plot_temporal_distributions,
-    plot_message_length_distribution,
-    plot_activity_heatmap,
-    plot_sentiment_distribution,
-    plot_sentiment_distributions,
-    plot_member_wordclouds,
-    plot_engagement_metrics,
-    plot_member_sentiment_analysis,
-    plot_mood_swings
-)
-from .ai_insights import (
-    generate_chat_summary,
-    identify_topics,
-    generate_insights,
-    analyze_conversation_flow,
-    get_member_insights
-)
+# Handle both relative and absolute imports
+try:
+    # Try relative imports first (when used as a package)
+    from .data_extraction import extract_chat_data, detect_chat_type
+    from .data_cleaning import preprocess_chat_data
+    from .data_wrangling import enrich_dataframe
+    from .nlp_analysis import add_sentiment_features
+    from .visualization import (
+        plot_message_frequency,
+        plot_temporal_distribution,
+        plot_temporal_distributions,
+        plot_message_length_distribution,
+        plot_activity_heatmap,
+        plot_sentiment_distribution,
+        plot_sentiment_distributions,
+        plot_member_wordclouds,
+        plot_engagement_metrics,
+        plot_member_sentiment_analysis,
+        plot_mood_swings
+    )
+    from .ai_insights import (
+        generate_chat_summary,
+        identify_topics,
+        generate_insights,
+        analyze_conversation_flow,
+        get_member_insights
+    )
+except ImportError:
+    # Fall back to absolute imports (when imported directly)
+    from data_extraction import extract_chat_data, detect_chat_type
+    from data_cleaning import preprocess_chat_data
+    from data_wrangling import enrich_dataframe
+    from nlp_analysis import add_sentiment_features
+    from visualization import (
+        plot_message_frequency,
+        plot_temporal_distribution,
+        plot_temporal_distributions,
+        plot_message_length_distribution,
+        plot_activity_heatmap,
+        plot_sentiment_distribution,
+        plot_sentiment_distributions,
+        plot_member_wordclouds,
+        plot_engagement_metrics,
+        plot_member_sentiment_analysis,
+        plot_mood_swings
+    )
+    from ai_insights import (
+        generate_chat_summary,
+        identify_topics,
+        generate_insights,
+        analyze_conversation_flow,
+        get_member_insights
+    )
 
 
 class WhatsAppChatAnalyzer:
@@ -297,4 +326,5 @@ class WhatsAppChatAnalyzer:
         if self.processed_df is None:
             raise ValueError("Must call analyze() first")
         return self.processed_df.copy()
+
 

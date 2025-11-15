@@ -15,7 +15,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from wordcloud import WordCloud
 
-from .nlp_analysis import prepare_text_for_wordcloud
+# Handle both relative and absolute imports
+try:
+    from .nlp_analysis import prepare_text_for_wordcloud
+except ImportError:
+    from nlp_analysis import prepare_text_for_wordcloud
 
 
 # Time ordering dictionaries for consistent plotting
@@ -595,4 +599,5 @@ def plot_mood_swings(
     )
 
     return fig
+
 

@@ -7,3 +7,6 @@ __pycache__/
 .cursor/
 .pytest_cache/
 .vscode/
+.github/
+apps/flask_app.py
+apps/.sessions/

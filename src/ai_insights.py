@@ -9,14 +9,10 @@ from typing import Dict, List, Optional
 import pandas as pd
 from dotenv import load_dotenv
 
+from groq import Groq
+
 # Load environment variables
 load_dotenv()
-
-try:
-    from groq import Groq
-except ImportError:
-    Groq = None
-    print("Warning: groq package not installed. AI features will not work.")
 
 
 def _get_groq_client() -> Optional['Groq']:
@@ -36,7 +32,7 @@ def _get_groq_client() -> Optional['Groq']:
 
 def _call_groq_api(
     prompt: str,
-    model: str = 'llama-3.1-8b-instant',
+    model: str = 'llama-3.3-70b-versatile',
     max_tokens: int = 1024,
     temperature: float = 0.7,
     retries: int = 3
@@ -46,7 +42,12 @@ def _call_groq_api(
 
     Args:
         prompt: Prompt to send to the model
-        model: Model name (default: llama-3.1-8b-instant)
+        model: Model name (default: llama-3.3-70b-versatile for best quality/speed balance)
+               Available models:
+               - llama-3.3-70b-versatile: Best for analysis, insights, summaries (280 T/s, high quality)
+               - llama-3.1-8b-instant: Fastest for simple tasks (560 T/s, good quality)
+               - openai/gpt-oss-120b: Highest quality for complex analysis (500 T/s, premium quality)
+               - openai/gpt-oss-20b: Fast high-quality alternative (1000 T/s, good quality)
         max_tokens: Maximum tokens in response
         temperature: Sampling temperature
         retries: Number of retry attempts
@@ -87,16 +88,20 @@ def _call_groq_api(
 def generate_chat_summary(
     df: pd.DataFrame,
     period: str = 'all',
-    model: str = 'llama-3.1-8b-instant',
+    model: str = 'llama-3.3-70b-versatile',
     max_messages: int = 1000
 ) -> str:
     """
     Generate chat summary using AI.
 
+    Uses llama-3.3-70b-versatile by default for high-quality comprehensive summaries.
+    For faster summaries, use 'llama-3.1-8b-instant'.
+    For highest quality, use 'openai/gpt-oss-120b'.
+
     Args:
         df: DataFrame with chat messages
         period: Time period ('all', 'daily', 'weekly', 'monthly')
-        model: Groq model to use
+        model: Groq model to use (default: llama-3.3-70b-versatile)
         max_messages: Maximum number of messages to include in summary
 
     Returns:
@@ -137,22 +142,25 @@ Please provide:
 
 Summary:"""
 
-    return _call_groq_api(prompt, model=model, max_tokens=1024)
+    return _call_groq_api(prompt, model=model, max_tokens=2048)
 
 
 def identify_topics(
     df: pd.DataFrame,
     n_topics: int = 5,
-    model: str = 'llama-3.1-8b-instant',
+    model: str = 'llama-3.3-70b-versatile',
     max_messages: int = 500
 ) -> List[Dict[str, str]]:
     """
     Identify main topics in the chat using AI.
 
+    Uses llama-3.3-70b-versatile by default for accurate topic identification and categorization.
+    For faster topic extraction, use 'llama-3.1-8b-instant'.
+
     Args:
         df: DataFrame with chat messages
         n_topics: Number of topics to identify
-        model: Groq model to use
+        model: Groq model to use (default: llama-3.3-70b-versatile)
         max_messages: Maximum number of messages to analyze
 
     Returns:
@@ -207,15 +215,19 @@ Format your response as a numbered list with clear topic names and descriptions.
 def generate_insights(
     df: pd.DataFrame,
     chat_type: str = 'group',
-    model: str = 'llama-3.1-8b-instant'
+    model: str = 'llama-3.3-70b-versatile'
 ) -> Dict[str, str]:
     """
     Generate smart insights about the chat.
 
+    Uses llama-3.3-70b-versatile by default for intelligent, nuanced insights.
+    For highest quality insights, use 'openai/gpt-oss-120b'.
+    For faster insights, use 'llama-3.1-8b-instant'.
+
     Args:
         df: DataFrame with analyzed chat data
         chat_type: 'group' or 'individual'
-        model: Groq model to use
+        model: Groq model to use (default: llama-3.3-70b-versatile)
 
     Returns:
         Dictionary with various insights
@@ -281,14 +293,17 @@ Format your response clearly with numbered insights."""
 
 def analyze_conversation_flow(
     df: pd.DataFrame,
-    model: str = 'llama-3.1-8b-instant'
+    model: str = 'llama-3.3-70b-versatile'
 ) -> Dict[str, str]:
     """
     Analyze conversation flow for individual chats.
 
+    Uses llama-3.3-70b-versatile by default for deep understanding of conversation patterns.
+    For faster analysis, use 'llama-3.1-8b-instant'.
+
     Args:
         df: DataFrame with individual chat data
-        model: Groq model to use
+        model: Groq model to use (default: llama-3.3-70b-versatile)
 
     Returns:
         Dictionary with conversation flow analysis
@@ -337,15 +352,19 @@ Provide your analysis:"""
 def get_member_insights(
     df: pd.DataFrame,
     member: str,
-    model: str = 'llama-3.1-8b-instant'
+    model: str = 'llama-3.3-70b-versatile'
 ) -> Dict[str, str]:
     """
     Get AI-powered insights for a specific group member.
 
+    Uses llama-3.3-70b-versatile by default for detailed behavioral analysis.
+    For highest quality member analysis, use 'openai/gpt-oss-120b'.
+    For faster analysis, use 'llama-3.1-8b-instant'.
+
     Args:
         df: DataFrame with group chat data
         member: Name of the member to analyze
-        model: Groq model to use
+        model: Groq model to use (default: llama-3.3-70b-versatile)
 
     Returns:
         Dictionary with member-specific insights
@@ -397,4 +416,3 @@ Provide your analysis:"""
         },
         'insights': analysis
     }
-
