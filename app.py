@@ -24,6 +24,7 @@ from st_helpers import unzip_chat_for_st, generate_word_cloud
 
 st.set_page_config(page_title="WhatsApp Chat Analyzer", page_icon="💬", layout="centered", initial_sidebar_state="expanded")
 st.markdown("""
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">  
     <style>
     .main {
         padding: 0rem 1rem;
@@ -100,26 +101,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("💬 WhatsApp Chat Sentiment Analyzer")
+st.title("WhatsApp Chat Analyzer") 
 st.markdown("---")
 
 with st.sidebar:
     st.header("📊 Dashboard Controls")    
-    uploaded_file = st.file_uploader("Upload WhatsApp Chat (.txt)", type=['txt'])    
+    uploaded_file = st.file_uploader("Upload WhatsApp Chat (.zip)", type=['zip'])    
     st.markdown("---")
     st.markdown("### About")
     st.info("""
-    This dashboard analyzes sentiment in your WhatsApp chats using VADER sentiment analysis.
+    This dashboard analyzes you whatsapp chats and provides interesting insights.
     
     **Features:**
-    - Overall sentiment distribution
-    - Sentiment trends over time
-    - Individual member analysis
+    - Overall chat analysis
+    - Chat trends over time
+    - Group Member profile
     - Time-based patterns
     """)
-uploaded_file = st.file_uploader("Upload your file")
-
-
 # st.set_page_config(page_title="Performance Dashboard", layout="wide")
 
 
@@ -507,7 +505,7 @@ if uploaded_file is not None:
 
 else:
     st.markdown("""
-    ## 👋 Welcome to WhatsApp Sentiment Analyzer!
+    ## 👋 Welcome to WhatsApp Chat Analyzer! 
     
     ### How to get started:
     
@@ -516,38 +514,31 @@ else:
        - Click ⋮ (menu) → More → Export chat
        - Choose "Without Media"
     
-    2. **Upload the .txt file** using the sidebar
+    2. **Upload the .zip file** via the sidebar
     
     3. **Explore the insights!**
-       - See overall sentiment trends
-       - Analyze individual members
+       - See overall chat analysis
+       - Analyze individual members profile
        - Discover time-based patterns
        - Find most positive/negative messages
     
     ### What you'll discover:
     
     - 📊 Overall mood of the conversation
-    - 👥 Who's the most positive/negative person
-    - ⏰ Best and worst times of day
-    - 📅 Happiest and saddest days
+    - 👥 The most active and least active group members
+    - ⏰ Chat patterns over time
     - 💬 Most emotional messages
     
     ### Privacy Note:
     
     🔒 Your data is processed locally and **not stored** on any server. 
     Everything happens in your browser session.
-    """)
-    
-    # Sample visualization
-    st.markdown("---")
-    st.subheader("📸 Preview")
-    st.image("https://via.placeholder.com/800x400.png?text=Sample+Dashboard+Preview", 
-             caption="Sample dashboard view")
+    """, unsafe_allow_html=True)
 
-# Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
-    <p>Made with ❤️ using Streamlit | Powered by VADER Sentiment Analysis</p>
+    <p>Powered by Streamlit</p>
+    <p>Copyright 2025</p>
 </div>
 """, unsafe_allow_html=True)
