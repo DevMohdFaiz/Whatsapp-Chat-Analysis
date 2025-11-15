@@ -392,16 +392,149 @@ def plot_member_sentiment_analysis(df: pd.DataFrame):
             x=avg_sentiment.values,
             y=avg_sentiment.index,
             orientation='h',
-            name="Average Sentiment"
+            name="Average Sentiment",
+            marker=dict(color=avg_sentiment.values, colorscale='RdYlGn', showscale=True)
         ))
         fig.update_layout(
-            title="Average Sentiment by Sender",
+            title="Average Sentiment by Member",
             xaxis_title="Sentiment Score",
-            yaxis_title="Sender",
+            yaxis_title="Member",
+            template="plotly_dark",
+            height=400
+        )
+        return fig
+    return None
+
+
+def plot_word_frequency(df: pd.DataFrame, top_n=20):
+    """Plot word frequency bar chart"""
+    all_text = ' '.join(df['message'].astype(str)).lower()
+    words = re.findall(r'\b[a-z]{4,}\b', all_text)
+    word_counts = Counter(words).most_common(top_n)
+
+    words_list = [w[0] for w in word_counts]
+    counts_list = [w[1] for w in word_counts]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=counts_list,
+        y=words_list,
+        orientation='h',
+        marker=dict(color=counts_list, colorscale='Viridis')
+    ))
+    fig.update_layout(
+        title=f"Top {top_n} Most Frequent Words",
+        xaxis_title="Frequency",
+        yaxis_title="Word",
+        template="plotly_dark",
+        height=500
+    )
+    return fig
+
+
+def plot_text_features(df: pd.DataFrame):
+    """Plot text features pie chart"""
+    df_temp = df.copy()
+    df_temp['has_url'] = df_temp['message'].astype(str).str.contains('http', case=False, na=False)
+    df_temp['has_question'] = df_temp['message'].astype(str).str.contains('\\?', regex=True, na=False)
+    df_temp['has_exclamation'] = df_temp['message'].astype(str).str.contains('!', regex=False, na=False)
+    df_temp['has_mention'] = df_temp['message'].astype(str).str.contains('@', regex=False, na=False)
+
+    features = {
+        'URLs': df_temp['has_url'].sum(),
+        'Questions': df_temp['has_question'].sum(),
+        'Exclamations': df_temp['has_exclamation'].sum(),
+        'Mentions': df_temp['has_mention'].sum()
+    }
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=list(features.keys()),
+        y=list(features.values()),
+        marker=dict(color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'])
+    ))
+    fig.update_layout(
+        title="Message Features",
+        xaxis_title="Feature Type",
+        yaxis_title="Count",
+        template="plotly_dark"
+    )
+    return fig
+
+
+def plot_day_of_week(df: pd.DataFrame):
+    """Plot messages by day of week"""
+    if 'day' in df.columns:
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_counts = df['day'].value_counts()
+        ordered_counts = [day_counts.get(day, 0) for day in day_order]
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=day_order,
+            y=ordered_counts,
+            marker=dict(color=ordered_counts, colorscale='Blues')
+        ))
+        fig.update_layout(
+            title="Messages by Day of Week",
+            xaxis_title="Day",
+            yaxis_title="Message Count",
             template="plotly_dark"
         )
         return fig
     return None
+
+
+def plot_sender_comparison(df: pd.DataFrame, top_n=10):
+    """Plot multi-metric sender comparison"""
+    from plotly.subplots import make_subplots
+
+    if 'message_length' not in df.columns:
+        df['message_length'] = df['message'].astype(str).str.len()
+
+    top_senders = df['sender'].value_counts().head(top_n).index
+
+    # Prepare data
+    msg_counts = []
+    avg_lengths = []
+    avg_sentiments = []
+
+    for sender in top_senders:
+        sender_df = df[df['sender'] == sender]
+        msg_counts.append(len(sender_df))
+        avg_lengths.append(sender_df['message_length'].mean())
+        if 'sentiment_compound' in df.columns:
+            avg_sentiments.append(sender_df['sentiment_compound'].mean())
+
+    fig = make_subplots(
+        rows=1, cols=3,
+        subplot_titles=('Message Count', 'Avg Message Length', 'Avg Sentiment')
+    )
+
+    fig.add_trace(
+        go.Bar(x=msg_counts, y=list(top_senders), orientation='h', name='Messages'),
+        row=1, col=1
+    )
+
+    fig.add_trace(
+        go.Bar(x=avg_lengths, y=list(top_senders), orientation='h', name='Length', marker_color='orange'),
+        row=1, col=2
+    )
+
+    if avg_sentiments:
+        fig.add_trace(
+            go.Bar(x=avg_sentiments, y=list(top_senders), orientation='h', name='Sentiment', marker_color='green'),
+            row=1, col=3
+        )
+
+    fig.update_layout(
+        title_text=f"Top {top_n} Members - Comparison",
+        template="plotly_dark",
+        height=400,
+        showlegend=False
+    )
+
+    return fig
 
 
 def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
@@ -411,60 +544,76 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
 
     try:
         if analysis_type == "univariate-messages":
-            # Message characteristics analysis
             if 'message_length' not in df.columns:
                 df['message_length'] = df['message'].astype(str).str.len()
             if 'word_count' not in df.columns:
                 df['word_count'] = df['message'].astype(str).str.split().str.len()
 
-            result_text = f"""**Univariate Analysis: Message Characteristics**
+            result_text = f"""**Message Characteristics**
 
-📊 **Message Length Distribution**
-- Average: {df['message_length'].mean():.1f} characters
-- Median: {df['message_length'].median():.1f} characters
-- Std Dev: {df['message_length'].std():.1f}
-
-📝 **Word Count Distribution**
-- Average: {df['word_count'].mean():.1f} words
-- Median: {df['word_count'].median():.1f} words
-
-📅 **Frequency Analysis**
-- Total Messages: {len(df):,}
-- By Sender: Top is {df['sender'].value_counts().index[0]} with {df['sender'].value_counts().iloc[0]} messages
-- Peak Day: {df['day'].mode()[0] if 'day' in df.columns else 'N/A'}
-- Peak Month: {df['month'].mode()[0] if 'month' in df.columns else 'N/A'}
-- Peak Hour: {extract_hour(df['hour'].mode()[0]) if 'hour' in df.columns else 'N/A'}:00
+Average Length: {df['message_length'].mean():.0f} characters | Average Words: {df['word_count'].mean():.1f}
 """
+
+            # Message length distribution
             try:
                 fig = plot_message_length_distribution(df)
                 charts.append(fig)
             except:
                 pass
 
+            # Word count distribution
+            try:
+                fig = go.Figure()
+                fig.add_trace(go.Histogram(x=df['word_count'], nbinsx=30, marker_color='lightblue'))
+                fig.update_layout(title="Word Count Distribution", xaxis_title="Words", yaxis_title="Count", template="plotly_dark")
+                charts.append(fig)
+            except:
+                pass
+
+            # Messages by sender
+            try:
+                top_senders = df['sender'].value_counts().head(10)
+                fig = go.Figure()
+                fig.add_trace(go.Bar(y=top_senders.index, x=top_senders.values, orientation='h', marker_color='teal'))
+                fig.update_layout(title="Top 10 Most Active Members", xaxis_title="Messages", yaxis_title="Member", template="plotly_dark")
+                charts.append(fig)
+            except:
+                pass
+
         elif analysis_type == "univariate-sentiment":
-            # Sentiment distribution analysis
             if 'sentiment_compound' in df.columns:
-                result_text = f"""**Univariate Analysis: Sentiment Distribution**
+                positive_pct = (df['sentiment_compound'] > 0.5).sum()/len(df)*100
+                negative_pct = (df['sentiment_compound'] < -0.5).sum()/len(df)*100
+                neutral_pct = 100 - positive_pct - negative_pct
 
-📊 **Overall Sentiment Scores**
-- Mean: {df['sentiment_compound'].mean():.3f}
-- Median: {df['sentiment_compound'].median():.3f}
-- Std Dev: {df['sentiment_compound'].std():.3f}
+                result_text = f"""**Sentiment Distribution**
 
-📈 **Distribution**
-- Positive (>0.5): {(df['sentiment_compound'] > 0.5).sum()} ({(df['sentiment_compound'] > 0.5).sum()/len(df)*100:.1f}%)
-- Neutral (-0.5 to 0.5): {((df['sentiment_compound'] >= -0.5) & (df['sentiment_compound'] <= 0.5)).sum()} ({((df['sentiment_compound'] >= -0.5) & (df['sentiment_compound'] <= 0.5)).sum()/len(df)*100:.1f}%)
-- Negative (<-0.5): {(df['sentiment_compound'] < -0.5).sum()} ({(df['sentiment_compound'] < -0.5).sum()/len(df)*100:.1f}%)
-
-🎭 **Mood Swing Analysis**
+Positive: {positive_pct:.1f}% | Neutral: {neutral_pct:.1f}% | Negative: {negative_pct:.1f}%
 """
-                # Mood swing per member
-                for sender in df['sender'].value_counts().head(5).index:
-                    sender_sentiment_std = df[df['sender'] == sender]['sentiment_compound'].std()
-                    result_text += f"- {sender}: {sender_sentiment_std:.3f}\n"
 
+                # Sentiment histogram
                 try:
                     fig = plot_sentiment_distributions(df)
+                    charts.append(fig)
+                except:
+                    pass
+
+                # Sentiment pie chart
+                try:
+                    fig = go.Figure()
+                    fig.add_trace(go.Pie(
+                        labels=['Positive', 'Neutral', 'Negative'],
+                        values=[positive_pct, neutral_pct, negative_pct],
+                        marker_colors=['#2ecc71', '#95a5a6', '#e74c3c']
+                    ))
+                    fig.update_layout(title="Sentiment Breakdown", template="plotly_dark")
+                    charts.append(fig)
+                except:
+                    pass
+
+                # Sentiment by member
+                try:
+                    fig = plot_member_sentiment_analysis(df)
                     charts.append(fig)
                 except:
                     pass
@@ -472,46 +621,18 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
                 result_text = "Sentiment data not available"
 
         elif analysis_type == "univariate-text":
-            # Text features analysis
-            df['has_url'] = df['message'].astype(str).str.contains('http', case=False, na=False)
-            df['has_question'] = df['message'].astype(str).str.contains('\\?', regex=True, na=False)
-            df['has_exclamation'] = df['message'].astype(str).str.contains('!', regex=False, na=False)
-            df['has_mention'] = df['message'].astype(str).str.contains('@', regex=False, na=False)
+            result_text = "**Text Features**"
 
-            result_text = f"""**Univariate Analysis: Text Features**
-
-🔗 **URL Detection**
-- Messages with URLs: {df['has_url'].sum()} ({df['has_url'].sum()/len(df)*100:.1f}%)
-
-❓ **Question Marks**
-- Messages with questions: {df['has_question'].sum()} ({df['has_question'].sum()/len(df)*100:.1f}%)
-
-❗ **Exclamation Marks**
-- Messages with exclamations: {df['has_exclamation'].sum()} ({df['has_exclamation'].sum()/len(df)*100:.1f}%)
-
-@ **Mentions**
-- Messages with mentions: {df['has_mention'].sum()} ({df['has_mention'].sum()/len(df)*100:.1f}%)
-"""
+            try:
+                fig = plot_text_features(df)
+                charts.append(fig)
+            except:
+                pass
 
         elif analysis_type == "bivariate-temporal":
-            result_text = f"""**Bivariate Analysis: Temporal Patterns**
+            result_text = "**Temporal Patterns**"
 
-📅 **Message Frequency vs Day of Week**
-"""
-            if 'day' in df.columns:
-                day_counts = df['day'].value_counts()
-                for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']:
-                    if day in day_counts.index:
-                        result_text += f"- {day}: {day_counts[day]} messages\n"
-
-            result_text += f"\n⏰ **Message Frequency vs Hour of Day**\n"
-            if 'hour' in df.columns:
-                hourly = df.groupby('hour').size()
-                peak_hour = extract_hour(hourly.idxmax())
-                quiet_hour = extract_hour(hourly.idxmin())
-                result_text += f"- Peak Hour: {peak_hour:02d}:00 ({hourly.max()} messages)\n"
-                result_text += f"- Quiet Hour: {quiet_hour:02d}:00 ({hourly.min()} messages)\n"
-
+            # Hour distribution
             try:
                 fig = plot_temporal_distributions(df)
                 if fig:
@@ -519,28 +640,22 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
             except:
                 pass
 
+            # Day of week
+            try:
+                fig = plot_day_of_week(df)
+                if fig:
+                    charts.append(fig)
+            except:
+                pass
+
         elif analysis_type == "bivariate-sender":
-            result_text = f"""**Bivariate Analysis: Sender Relationships**
+            result_text = "**Member Activity Analysis**"
 
-👥 **Message Count vs Sender**
-"""
-            top_senders = df['sender'].value_counts().head(10)
-            for sender, count in top_senders.items():
-                result_text += f"- {sender}: {count} messages ({count/len(df)*100:.1f}%)\n"
-
-            if 'message_length' not in df.columns:
-                df['message_length'] = df['message'].astype(str).str.len()
-
-            result_text += f"\n📏 **Average Message Length vs Sender**\n"
-            avg_lengths = df.groupby('sender')['message_length'].mean().sort_values(ascending=False).head(10)
-            for sender, avg_len in avg_lengths.items():
-                result_text += f"- {sender}: {avg_len:.1f} characters\n"
-
-            if 'sentiment_compound' in df.columns:
-                result_text += f"\n😊 **Sentiment vs Sender**\n"
-                avg_sentiment = df.groupby('sender')['sentiment_compound'].mean().sort_values(ascending=False).head(10)
-                for sender, sent in avg_sentiment.items():
-                    result_text += f"- {sender}: {sent:.3f}\n"
+            try:
+                fig = plot_sender_comparison(df, top_n=10)
+                charts.append(fig)
+            except:
+                pass
 
             try:
                 fig = plot_engagement_metrics(df)
@@ -549,17 +664,15 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
                 pass
 
         elif analysis_type == "multivariate-heatmaps":
-            result_text = f"""**Multivariate Analysis: Activity Heatmaps**
-
-🔥 **Day × Hour Activity**
-"""
             if 'day' in df.columns and 'hour' in df.columns:
                 heatmap_data = pd.crosstab(df['day'], df['hour'])
                 peak_day = heatmap_data.sum(axis=1).idxmax()
                 peak_hour = extract_hour(heatmap_data.sum(axis=0).idxmax())
-                result_text += f"- Peak Day: {peak_day}\n"
-                result_text += f"- Peak Hour: {peak_hour:02d}:00\n"
-                result_text += f"- Busiest Combination: {peak_day} at {peak_hour:02d}:00\n"
+
+                result_text = f"""**Activity Heatmap**
+
+Peak Activity: {peak_day} at {peak_hour:02d}:00
+"""
 
                 try:
                     fig = plot_activity_heatmap(df)
@@ -567,29 +680,16 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
                 except:
                     pass
             else:
-                result_text += "Temporal data not available\n"
+                result_text = "Temporal data not available"
 
         elif analysis_type == "multivariate-engagement":
-            result_text = f"""**Multivariate Analysis: Engagement Metrics**
+            result_text = "**Member Engagement Metrics**"
 
-📊 **Comprehensive Member Statistics**
-"""
-            if 'message_length' not in df.columns:
-                df['message_length'] = df['message'].astype(str).str.len()
-            if 'word_count' not in df.columns:
-                df['word_count'] = df['message'].astype(str).str.split().str.len()
-
-            for sender in df['sender'].value_counts().head(10).index:
-                sender_df = df[df['sender'] == sender]
-                msg_count = len(sender_df)
-                avg_len = sender_df['message_length'].mean()
-                avg_words = sender_df['word_count'].mean()
-                avg_sent = sender_df['sentiment_compound'].mean() if 'sentiment_compound' in df.columns else 0
-
-                result_text += f"\n**{sender}**\n"
-                result_text += f"- Messages: {msg_count}\n"
-                result_text += f"- Avg Length: {avg_len:.1f} chars, {avg_words:.1f} words\n"
-                result_text += f"- Avg Sentiment: {avg_sent:.3f}\n"
+            try:
+                fig = plot_sender_comparison(df, top_n=10)
+                charts.append(fig)
+            except:
+                pass
 
             try:
                 fig = plot_engagement_metrics(df)
@@ -598,32 +698,16 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
                 pass
 
         elif analysis_type == "temporal-trends":
-            result_text = f"""**Temporal Analysis: Time-based Patterns**
-
-📈 **Message Frequency Over Time**
-"""
             if 'date' in df.columns:
                 if not pd.api.types.is_datetime64_any_dtype(df['date']):
                     df['date'] = pd.to_datetime(df['date'], errors='coerce')
                 daily = df.groupby(df['date'].dt.date).size()
-                result_text += f"- Daily Average: {daily.mean():.1f} messages\n"
-                result_text += f"- Busiest Day: {daily.idxmax()} ({daily.max()} messages)\n"
-                result_text += f"- Quietest Day: {daily.idxmin()} ({daily.min()} messages)\n"
+                result_text = f"""**Time-based Patterns**
 
-            if 'sentiment_compound' in df.columns and 'date' in df.columns:
-                result_text += f"\n😊 **Sentiment Trends Over Time**\n"
-                if not pd.api.types.is_datetime64_any_dtype(df['date']):
-                    df['date'] = pd.to_datetime(df['date'], errors='coerce')
-                daily_sentiment = df.groupby(df['date'].dt.date)['sentiment_compound'].mean()
-                result_text += f"- Most Positive Day: {daily_sentiment.idxmax()} ({daily_sentiment.max():.3f})\n"
-                result_text += f"- Most Negative Day: {daily_sentiment.idxmin()} ({daily_sentiment.min():.3f})\n"
-
-            result_text += f"\n⏰ **Activity Patterns by Time of Day**\n"
-            if 'part_of_day' in df.columns:
-                pod_counts = df['part_of_day'].value_counts()
-                for pod in ['Morning', 'Afternoon', 'Evening', 'Night', 'Midnight']:
-                    if pod in pod_counts.index:
-                        result_text += f"- {pod}: {pod_counts[pod]} messages\n"
+Daily Average: {daily.mean():.0f} messages
+"""
+            else:
+                result_text = "**Time-based Patterns**"
 
             try:
                 fig = plot_temporal_distribution(df, frequency='day')
@@ -631,76 +715,62 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
             except:
                 pass
 
-        elif analysis_type == "temporal-series":
-            result_text = f"""**Temporal Analysis: Time Series Features**
+            # Add time of day breakdown
+            if 'part_of_day' in df.columns:
+                try:
+                    pod_counts = df['part_of_day'].value_counts()
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(x=pod_counts.index, y=pod_counts.values, marker_color='coral'))
+                    fig.update_layout(title="Messages by Time of Day", xaxis_title="Time Period", yaxis_title="Messages", template="plotly_dark")
+                    charts.append(fig)
+                except:
+                    pass
 
-📅 **Date Range Analysis**
-"""
+        elif analysis_type == "temporal-series":
             if 'date' in df.columns:
                 if not pd.api.types.is_datetime64_any_dtype(df['date']):
                     df['date'] = pd.to_datetime(df['date'], errors='coerce')
                 date_range = (df['date'].max() - df['date'].min()).days
-                result_text += f"- Total Duration: {date_range} days\n"
-                result_text += f"- Start Date: {df['date'].min().strftime('%Y-%m-%d')}\n"
-                result_text += f"- End Date: {df['date'].max().strftime('%Y-%m-%d')}\n"
-                result_text += f"- Messages per Day: {len(df)/max(date_range, 1):.1f}\n"
+                result_text = f"""**Time Series Analysis**
 
-            result_text += f"\n🔥 **Peak Activity Periods**\n"
+Duration: {date_range} days | Messages/Day: {len(df)/max(date_range, 1):.1f}
+"""
+            else:
+                result_text = "**Time Series Analysis**"
+
+            # Monthly trend
             if 'month' in df.columns:
-                monthly = df.groupby('month').size()
-                result_text += f"- Peak Month: {monthly.idxmax()} ({monthly.max()} messages)\n"
-
-            if 'day' in df.columns:
-                weekly = df.groupby('day').size()
-                result_text += f"- Peak Day: {weekly.idxmax()} ({weekly.max()} messages)\n"
-
-            if 'hour' in df.columns:
-                hourly = df.groupby('hour').size()
-                peak_hour_raw = hourly.idxmax()
-                peak_hour = extract_hour(peak_hour_raw)
-                result_text += f"- Peak Hour: {peak_hour:02d}:00 ({hourly.max()} messages)\n"
+                try:
+                    monthly = df.groupby('month').size()
+                    fig = go.Figure()
+                    fig.add_trace(go.Bar(x=monthly.index, y=monthly.values, marker_color='skyblue'))
+                    fig.update_layout(title="Messages by Month", xaxis_title="Month", yaxis_title="Messages", template="plotly_dark")
+                    charts.append(fig)
+                except:
+                    pass
 
         elif analysis_type == "nlp-words":
-            result_text = f"""**Text/NLP Analysis: Word Analysis**
+            result_text = "**Word Analysis**"
 
-💬 **Most Frequent Words**
-"""
-            all_text = ' '.join(df['message'].astype(str)).lower()
-            words = re.findall(r'\b[a-z]{4,}\b', all_text)
-            word_counts = Counter(words)
-
-            for word, count in word_counts.most_common(20):
-                result_text += f"- {word}: {count} times\n"
-
-            result_text += f"\n🔤 **Keyword Extraction (TF-IDF)**\n"
             try:
-                vectorizer = TfidfVectorizer(max_features=10, stop_words='english')
-                tfidf_matrix = vectorizer.fit_transform(df['message'].astype(str))
-                feature_names = vectorizer.get_feature_names_out()
-                for term in feature_names:
-                    result_text += f"- {term}\n"
+                fig = plot_word_frequency(df, top_n=20)
+                charts.append(fig)
             except:
                 pass
 
         elif analysis_type == "nlp-sentiment":
             if 'sentiment_compound' in df.columns:
-                result_text = f"""**Text/NLP Analysis: Advanced Sentiment**
+                avg_sentiment = df['sentiment_compound'].mean()
+                result_text = f"""**Advanced Sentiment Analysis**
 
-📊 **VADER Sentiment Scores**
-- Compound: {df['sentiment_compound'].mean():.3f} (±{df['sentiment_compound'].std():.3f})
+Average Sentiment: {avg_sentiment:.3f}
 """
-                if 'sentiment_pos' in df.columns:
-                    result_text += f"- Positive: {df['sentiment_pos'].mean():.3f}\n"
-                    result_text += f"- Neutral: {df['sentiment_neu'].mean():.3f}\n"
-                    result_text += f"- Negative: {df['sentiment_neg'].mean():.3f}\n"
 
-                result_text += f"\n😊 **Sentiment Categorization**\n"
-                positive = (df['sentiment_compound'] > 0.5).sum()
-                neutral = ((df['sentiment_compound'] >= -0.5) & (df['sentiment_compound'] <= 0.5)).sum()
-                negative = (df['sentiment_compound'] < -0.5).sum()
-                result_text += f"- Positive: {positive} ({positive/len(df)*100:.1f}%)\n"
-                result_text += f"- Neutral: {neutral} ({neutral/len(df)*100:.1f}%)\n"
-                result_text += f"- Negative: {negative} ({negative/len(df)*100:.1f}%)\n"
+                try:
+                    fig = plot_sentiment_distributions(df)
+                    charts.append(fig)
+                except:
+                    pass
 
                 try:
                     fig = plot_member_sentiment_analysis(df)
@@ -712,28 +782,7 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
                 result_text = "Sentiment data not available"
 
         elif analysis_type == "group-members":
-            result_text = f"""**Group Analysis: Member Statistics**
-
-👥 **Messages per Sender**
-"""
-            sender_counts = df['sender'].value_counts()
-            for sender, count in sender_counts.head(15).items():
-                percentage = count / len(df) * 100
-                result_text += f"- {sender}: {count} messages ({percentage:.1f}%)\n"
-
-            if 'message_length' not in df.columns:
-                df['message_length'] = df['message'].astype(str).str.len()
-
-            result_text += f"\n📏 **Average Message Length per Sender**\n"
-            avg_lengths = df.groupby('sender')['message_length'].mean().sort_values(ascending=False)
-            for sender, avg_len in avg_lengths.head(10).items():
-                result_text += f"- {sender}: {avg_len:.1f} characters\n"
-
-            if 'sentiment_compound' in df.columns:
-                result_text += f"\n😊 **Sentiment per Member**\n"
-                avg_sentiment = df.groupby('sender')['sentiment_compound'].mean().sort_values(ascending=False)
-                for sender, sent in avg_sentiment.head(10).items():
-                    result_text += f"- {sender}: {sent:.3f}\n"
+            result_text = "**Member Statistics**"
 
             try:
                 fig = plot_message_frequency(df, by='sender', orientation='h')
@@ -741,28 +790,35 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
             except:
                 pass
 
+            try:
+                fig = plot_sender_comparison(df, top_n=10)
+                charts.append(fig)
+            except:
+                pass
+
         elif analysis_type == "group-dynamics":
-            result_text = f"""**Group Analysis: Group Dynamics**
-
-🔄 **Member Activity Patterns**
-"""
-            if 'day' in df.columns:
-                for sender in df['sender'].value_counts().head(5).index:
-                    sender_peak_day = df[df['sender'] == sender]['day'].mode()[0] if not df[df['sender'] == sender].empty else 'N/A'
-                    result_text += f"- {sender}: Most active on {sender_peak_day}\n"
-
-            if '@' in ' '.join(df['message'].astype(str)):
-                result_text += f"\n@ **Mention Patterns**\n"
-                mentions = df[df['message'].astype(str).str.contains('@', na=False)]
-                result_text += f"- Total Mentions: {len(mentions)}\n"
-                result_text += f"- Most Mentions by: {mentions['sender'].value_counts().index[0] if not mentions.empty else 'N/A'}\n"
-
-            result_text += f"\n📊 **Conversation Participation**\n"
             sender_counts = df['sender'].value_counts()
-            total_msgs = len(df)
-            for sender, count in sender_counts.head(10).items():
-                participation = count / total_msgs * 100
-                result_text += f"- {sender}: {participation:.1f}% participation\n"
+            top_member = sender_counts.index[0]
+            participation = sender_counts.iloc[0] / len(df) * 100
+
+            result_text = f"""**Group Dynamics**
+
+Most Active: {top_member} ({participation:.1f}%)
+"""
+
+            # Participation pie chart
+            try:
+                top_10 = sender_counts.head(10)
+                others = sender_counts[10:].sum()
+                labels = list(top_10.index) + ['Others']
+                values = list(top_10.values) + [others]
+
+                fig = go.Figure()
+                fig.add_trace(go.Pie(labels=labels, values=values))
+                fig.update_layout(title="Member Participation Distribution", template="plotly_dark")
+                charts.append(fig)
+            except:
+                pass
 
         elif analysis_type == "stats-descriptive":
             if 'message_length' not in df.columns:
@@ -770,39 +826,23 @@ def run_analysis(analysis_type: str, df: pd.DataFrame) -> Dict[str, Any]:
             if 'word_count' not in df.columns:
                 df['word_count'] = df['message'].astype(str).str.split().str.len()
 
-            result_text = f"""**Statistical Summary: Descriptive Statistics**
+            result_text = f"""**Statistical Summary**
 
-📊 **Overall Statistics**
-- Total Messages: {len(df):,}
-- Unique Senders: {df['sender'].nunique()}
-- Date Range: {(pd.to_datetime(df['date']).max() - pd.to_datetime(df['date']).min()).days if 'date' in df.columns else 'N/A'} days
-
-📝 **Message Length Statistics**
-- Mean: {df['message_length'].mean():.1f} characters
-- Median: {df['message_length'].median():.1f} characters
-- Std Dev: {df['message_length'].std():.1f}
-- Min: {df['message_length'].min()}
-- Max: {df['message_length'].max()}
-- 25th Percentile: {df['message_length'].quantile(0.25):.1f}
-- 75th Percentile: {df['message_length'].quantile(0.75):.1f}
-
-💬 **Word Count Statistics**
-- Mean: {df['word_count'].mean():.1f} words
-- Median: {df['word_count'].median():.1f} words
-- Std Dev: {df['word_count'].std():.1f}
+Total Messages: {len(df):,} | Members: {df['sender'].nunique()} | Avg Length: {df['message_length'].mean():.0f} chars
 """
 
-            if 'sentiment_compound' in df.columns:
-                result_text += f"\n😊 **Sentiment Statistics**\n"
-                result_text += f"- Mean: {df['sentiment_compound'].mean():.3f}\n"
-                result_text += f"- Median: {df['sentiment_compound'].median():.3f}\n"
-                result_text += f"- Std Dev: {df['sentiment_compound'].std():.3f}\n"
-                result_text += f"- 25th Percentile: {df['sentiment_compound'].quantile(0.25):.3f}\n"
-                result_text += f"- 75th Percentile: {df['sentiment_compound'].quantile(0.75):.3f}\n"
+            # Box plots for message length and word count
+            try:
+                from plotly.subplots import make_subplots
+                fig = make_subplots(rows=1, cols=2, subplot_titles=('Message Length', 'Word Count'))
 
-            result_text += f"\n📈 **Distribution Statistics**\n"
-            result_text += f"- Messages per Sender (Mean): {df.groupby('sender').size().mean():.1f}\n"
-            result_text += f"- Messages per Sender (Median): {df.groupby('sender').size().median():.1f}\n"
+                fig.add_trace(go.Box(y=df['message_length'], name='Length', marker_color='lightblue'), row=1, col=1)
+                fig.add_trace(go.Box(y=df['word_count'], name='Words', marker_color='lightgreen'), row=1, col=2)
+
+                fig.update_layout(title="Distribution Statistics", template="plotly_dark", showlegend=False, height=400)
+                charts.append(fig)
+            except:
+                pass
 
         else:
             result_text = f"Unknown analysis type: {analysis_type}"
@@ -1015,12 +1055,20 @@ def main():
         with tab1:
             # Display analysis results if any
             if st.session_state.analysis_results:
-                st.subheader("📈 Analysis Results")
                 for analysis_key, analysis_data in st.session_state.analysis_results.items():
-                    with st.expander(f"View: {analysis_key.replace('-', ' ').title()}", expanded=True):
-                        st.markdown(analysis_data['result'])
-                        for idx, chart in enumerate(analysis_data['charts']):
-                            st.plotly_chart(chart, width='stretch', key=f"{analysis_key}_chart_{idx}")
+                    with st.expander(f"{analysis_key.replace('-', ' ').title()}", expanded=True):
+                        # Show brief text summary
+                        if analysis_data['result']:
+                            st.markdown(analysis_data['result'])
+                            if analysis_data['charts']:
+                                st.divider()
+
+                        # Display charts prominently
+                        if analysis_data['charts']:
+                            for idx, chart in enumerate(analysis_data['charts']):
+                                st.plotly_chart(chart, use_container_width=True, key=f"{analysis_key}_chart_{idx}")
+                        else:
+                            st.info("No charts available for this analysis")
             else:
                 st.info("👈 Select an analysis from the sidebar to view results here")
 

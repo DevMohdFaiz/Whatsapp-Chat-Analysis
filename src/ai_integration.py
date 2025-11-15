@@ -41,7 +41,7 @@ def _build_context(context_lines: List[str], n_context: int, stats: Optional[Dic
 
         if 'top_senders' in stats:
             stats_text += f"\nTop Participants:\n"
-            for sender, count in list(stats['top_senders'].items())[:5]:
+            for sender, count in list(stats['top_senders'].items())[:10]:
                 stats_text += f"  - {sender}: {count} messages\n"
 
         stats_text += "=====================\n\n"
@@ -61,7 +61,7 @@ def groq_chat(
     query: str,
     context_lines: Optional[List[str]] = None,
     n_context: int = 50,
-    model: str = "llama-3.3-70b-versatile",
+    model: str = "openai/gpt-oss-120b",
     stats: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
@@ -148,7 +148,7 @@ You: "Dad❤️ is the most active with 241 messages (34.6%), followed by Mum❤
 User: "analyze the communication patterns"
 You: [Provides focused analysis with structure]
 
-Remember: Be helpful, concise, and human. Match the user's energy!
+Remember: Be helpful, concise, and human. Match the user's energy!"""
 
         if context:
             user_message = f"Chat Context:\n{context}\n\nUser Question: {query}"
