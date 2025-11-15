@@ -5,4 +5,4 @@ plotly
 numpy
 wordcloud
 altair
-
+nltk
