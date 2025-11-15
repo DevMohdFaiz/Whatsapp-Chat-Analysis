@@ -6,3 +6,5 @@ numpy
 wordcloud
 altair
 nltk
+sklearn
+re
