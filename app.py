@@ -1,11 +1,12 @@
 import io
-import helpers
+import helpers, st_helpers
 import importlib
 import math
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import altair as alt
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from pathlib import Path
 from zipfile import ZipFile
@@ -16,7 +17,9 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import matplotlib.pyplot as plt
 
 importlib.reload(helpers)
+importlib.reload(st_helpers)
 from helpers import extract_chat_data, preprocess_df, vader_sent_analyzer
+from st_helpers import generate_word_cloud
 
 # Page config
 st.set_page_config(
@@ -193,7 +196,7 @@ if uploaded_file is not None:
     st.markdown("---")
     
     # Visualization Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Overview", "👥 Members", "⏰ Time Patterns", "💬 Messages"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "👥 Members", "⏰ Time Patterns", "💬 Messages", "Others"])
     
     with tab1:
         col1, col2 = st.columns(2)        
@@ -243,23 +246,31 @@ if uploaded_file is not None:
         'hour_order': ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
             '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00']
         }
-        freq_cols = ['month', 'day', 'hour']
-        fig = make_subplots(rows=len(freq_cols), cols=1, subplot_titles=[f"{col.capitalize()}ly Message frequency" for col in freq_cols])
+        freq_cols = ['date', 'month', 'day', 'hour']
+        fig = make_subplots(rows=len(freq_cols), cols=1, subplot_titles=[f"Message frequency by {col.capitalize()}" for col in freq_cols])
 
         for idx, col_name in enumerate(freq_cols):
-            df_plot = df.groupby(col_name).size().reindex(time_order_dict[f"{col_name}_order"]).reset_index(name='count')
+            df_plot = df.groupby(col_name).size().reindex(time_order_dict[f"{col_name}_order"]).reset_index(name='count') if col_name != 'date' else df.groupby(col_name).size().reset_index(name='count')
+            # if col_name != 'date': 
+            #     df_plot = df.groupby(col_name).size().reindex(time_order_dict[f"{col_name}_order"]).reset_index(name='count')
+            # else:
+            #     df_plot = df.groupby(col_name).size().reset_index(name='count')
             trace = px.line(df_plot, x=col_name, y='count').data[0]
             fig.add_trace(trace, row=idx + 1,  col=1)
         fig.update_layout(height=1000, title_text="Message Frequency Distributions")
         st.plotly_chart(fig, use_container_width=True)
 
 
-        fig = make_subplots(rows=len(freq_cols), cols=1, subplot_titles=[f"{col.capitalize()}ly Sentiment Distribution" for col in freq_cols])
+        fig = make_subplots(rows=len(freq_cols), cols=1, subplot_titles=[f"Sentiment Distribution by {col.capitalize()}" for col in freq_cols])
         for idx, col_name in enumerate(freq_cols):
-            sentiment_df = df.groupby(col_name)['sentiment'].mean().reindex(time_order_dict[f"{col_name}_order"]).reset_index(name='count')
+            sentiment_df = df.groupby(col_name)['sentiment'].mean().reindex(time_order_dict[f"{col_name}_order"]).reset_index(name='count') if col_name != 'date' else df.groupby(col_name)['sentiment'].mean().reset_index(name='count') 
             trace = px.line(sentiment_df, x=col_name, y='count').data[0]
             fig.add_trace(trace, row=idx + 1,  col=1)
         fig.update_layout(height=1000, title_text="Sentiment Score Distributions")
+        st.plotly_chart(fig, use_container_width=True)
+
+        fig = px.line(df.groupby('date')['message'].count(), title='Message Count Over time')
+        fig.update_layout({'xaxis_title': 'Date', 'yaxis_title': 'No. of messages', 'showlegend':False})
         st.plotly_chart(fig, use_container_width=True)
         # st.subheader("Time-Based Patterns")
         
@@ -305,16 +316,16 @@ if uploaded_file is not None:
     with tab4:
         st.subheader("Messages")
         group_members= list(df['sender'].unique())
-        chosen_member = st.selectbox("Select a group member to generate a word cloud", options=group_members, index=0)
+        chosen_member = st.selectbox("Select a group member to generate a word cloud", options=group_members, index=None)
         member_messsages = df[df['sender']==chosen_member]['message']
         member_tokens = word_tokenize(" ".join(t.lower() for t in member_messsages))
         member_texts = " ".join([t for t in member_tokens if t.isalpha() and t not in ENGLISH_STOP_WORDS])
         if len(member_texts) >0:
-            word_cloud = WordCloud(width=300, colormap='viridis', background_color='white').generate(member_texts).to_array()
+            word_cloud = generate_word_cloud(member_texts)
             fig = go.Figure()
             fig.update_layout(title=f"{chosen_member}'s Frequent Words",margin=dict(l=0, r=0, t=50, b=0),xaxis_visible=False,yaxis_visible=False)
             fig.add_trace(go.Image(z=word_cloud))
-            
+            fig.update_traces(zsmooth=False)
             st.plotly_chart(fig, use_container_width=True)
         
 
@@ -354,26 +365,28 @@ if uploaded_file is not None:
     #         file_name="sentiment_analysis.csv",
     #         mime="text/csv"
     #     )
-    
-    # with col2:
-    #     # Create summary report
-    #     summary = f"""
-    #     WhatsApp Sentiment Analysis Report
-    #     ===================================
+    col1, col2= st.columns(2)
+    # with st.container():
+        # Create summary report
+    st.markdown(
+         f"""
+        . * 5
+        WhatsApp Sentiment Analysis Report
         
-    #     Total Messages: {len(df)}
-    #     Date Range: {df['datetime'].min().date()} to {df['datetime'].max().date()}
         
-    #     Overall Sentiment:
-    #     - Average Score: {df['sentiment_score'].mean():.3f}
-    #     - Positive: {(df['sentiment']=='positive').sum()} ({positive_pct:.1f}%)
-    #     - Neutral: {(df['sentiment']=='neutral').sum()} ({(df['sentiment']=='neutral').sum()/len(df)*100:.1f}%)
-    #     - Negative: {(df['sentiment']=='negative').sum()} ({(df['sentiment']=='negative').sum()/len(df)*100:.1f}%)
+        Total Messages: {len(df)}
+        Date Range: {df['date'].min()} to {df['date'].max()}
+        
+        Overall Sentiment:
+        - Average Score: {df['sentiment_score'].mean():.3f}
+        # - Positive: {(df['sentiment']=='positive').sum()} (df['sentiment']==1).sum() / len(df)*100
+        - Neutral: {(df['sentiment']=='neutral').sum()} ({(df['sentiment']==0.5).sum()/len(df)*100:.1f}%)
+        - Negative: {(df['sentiment']=='negative').sum()} ({(df['sentiment']==0).sum()/len(df)*100:.1f}%)
         
     #     Most Positive Member: {most_positive}
     #     Happiest Day: {happiest_day}
     #     """
-        
+    ) 
     #     st.download_button(
     #         label="Download Report",
     #         data=summary,
@@ -384,50 +397,68 @@ if uploaded_file is not None:
     # with col3:
     #     st.info("More export options coming soon!")
 
-# else:
-#     # Welcome screen
-#     st.markdown("""
-#     ## 👋 Welcome to WhatsApp Sentiment Analyzer!
-    
-#     ### How to get started:
-    
-#     1. **Export your WhatsApp chat**
-#        - Open WhatsApp chat
-#        - Click ⋮ (menu) → More → Export chat
-#        - Choose "Without Media"
-    
-#     2. **Upload the .txt file** using the sidebar
-    
-#     3. **Explore the insights!**
-#        - See overall sentiment trends
-#        - Analyze individual members
-#        - Discover time-based patterns
-#        - Find most positive/negative messages
-    
-#     ### What you'll discover:
-    
-#     - 📊 Overall mood of the conversation
-#     - 👥 Who's the most positive/negative person
-#     - ⏰ Best and worst times of day
-#     - 📅 Happiest and saddest days
-#     - 💬 Most emotional messages
-    
-#     ### Privacy Note:
-    
-#     🔒 Your data is processed locally and **not stored** on any server. 
-#     Everything happens in your browser session.
-#     """)
-    
-#     # Sample visualization
-#     st.markdown("---")
-#     st.subheader("📸 Preview")
-#     st.image("https://via.placeholder.com/800x400.png?text=Sample+Dashboard+Preview", 
-#              caption="Sample dashboard view")
 
-# # Footer
-# st.markdown("---")
-# st.markdown("""
-# <div style='text-align: center; color: #666;'>
-#     <p>Made with ❤️ using Streamlit | Powered by VADER Sentiment Analysis</p>
-# </div>
-# """, unsafe_allow_html=True)
+    with tab5:
+        st.header("Others")
+        st.subheader("Choose to see most/lest active members")
+        label = st.selectbox("Choose to see top/least active members", options=['Top', 'Least'], index=None)
+        if label== 'Top':
+            chosen_members = df['sender'].value_counts().reset_index().rename({'sender': 'member', 'count':'message_count'}, axis=1).nlargest(10, 'message_count')
+        else:
+            chosen_members = df['sender'].value_counts().reset_index().rename({'sender': 'member', 'count':'message_count'}, axis=1).nsmallest(10, 'message_count')
+        if label is not None:
+            chart = alt.Chart(chosen_members).mark_bar().encode(
+                x=alt.X('message_count:Q', title='Number of Messages'),
+                y=alt.Y('member:N', title='Participant', sort='-x'),
+                color=alt.Color('member:N', legend=None),
+                tooltip=['member:N', 'message_count:Q']
+            ).properties(width=500, height=550, title=f'{label} active group members').configure_axis(grid=False)
+            st.altair_chart(chart, use_container_width=True)
+
+else:
+    # Welcome screen
+    st.markdown("""
+    ## 👋 Welcome to WhatsApp Sentiment Analyzer!
+    
+    ### How to get started:
+    
+    1. **Export your WhatsApp chat**
+       - Open WhatsApp chat
+       - Click ⋮ (menu) → More → Export chat
+       - Choose "Without Media"
+    
+    2. **Upload the .txt file** using the sidebar
+    
+    3. **Explore the insights!**
+       - See overall sentiment trends
+       - Analyze individual members
+       - Discover time-based patterns
+       - Find most positive/negative messages
+    
+    ### What you'll discover:
+    
+    - 📊 Overall mood of the conversation
+    - 👥 Who's the most positive/negative person
+    - ⏰ Best and worst times of day
+    - 📅 Happiest and saddest days
+    - 💬 Most emotional messages
+    
+    ### Privacy Note:
+    
+    🔒 Your data is processed locally and **not stored** on any server. 
+    Everything happens in your browser session.
+    """)
+    
+    # Sample visualization
+    st.markdown("---")
+    st.subheader("📸 Preview")
+    st.image("https://via.placeholder.com/800x400.png?text=Sample+Dashboard+Preview", 
+             caption="Sample dashboard view")
+
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; color: #666;'>
+    <p>Made with ❤️ using Streamlit | Powered by VADER Sentiment Analysis</p>
+</div>
+""", unsafe_allow_html=True)

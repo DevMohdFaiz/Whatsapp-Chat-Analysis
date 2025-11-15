@@ -32,7 +32,7 @@ def extract_chat_data(whatsapp_chats):
     
     for chat in whatsapp_chats:
         try:
-            date, time = re.search(r"\d{2}/\d{2}/\d{4}", chat), re.search(r"\d{2}:\d{2}", chat)
+            date, time = re.search(r"\d+/\d+/\d+", chat), re.search(r"\d+:\d+(?:\s+\w+)?", chat)
             sender, message = re.search(r"-\s*([^:]+):", chat), re.search(r": (.+)\n$", chat)
 
             extracted_data_dict['date'].append(date.group(0) if date else "")
@@ -61,6 +61,8 @@ def preprocess_df(df: pd.DataFrame):
     df = df.iloc[1:, :]
     df['sender'].replace('tmak 3', 'Tmak', inplace=True)
     df = df[~df['message'].isin(['<Media omitted>', 'Waiting for this message'])].reset_index()
+    if df[df['time'].str.contains('AM|PM')].shape[0]>df.shape[0] * .5:
+        df['time'] = pd.to_datetime(df['time'], format="%I:%M %p", errors='coerce').dt.strftime("%H:%M")
     df['date_and_time']=df['date']+ " " + df['time']
     df['date_and_time']= pd.to_datetime(df['date_and_time'], dayfirst=True, errors='coerce')
     df = df.dropna()

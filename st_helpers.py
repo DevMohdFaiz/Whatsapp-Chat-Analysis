@@ -7,6 +7,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from helpers import extract_chat_data, preprocess_df
 from pathlib import Path
 from zipfile import ZipFile
+from wordcloud import WordCloud
 
 def unzip_chat_for_st(uploaded_file):
     if uploaded_file is not None:
@@ -21,3 +22,8 @@ def unzip_chat_for_st(uploaded_file):
                 with zip_f.open(txt_file, "r") as file:
                     file_content = file.read().decode("utf")
     return file_content
+
+@st.cache_data(show_spinner=True)
+def generate_word_cloud(texts):
+    word_cloud = WordCloud(width=3000, height=2000, colormap='viridis', background_color='white').generate(texts)
+    return word_cloud.to_array()
