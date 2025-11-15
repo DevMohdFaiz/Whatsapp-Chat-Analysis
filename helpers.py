@@ -2,9 +2,9 @@ import re
 import pandas as pd
 import numpy as np
 from zipfile import ZipFile
-from vaderSentiment import vaderSentiment
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-vader_analyzer = vaderSentiment.SentimentIntensityAnalyzer()
+vader_analyzer = SentimentIntensityAnalyzer()
 
 
 def unzip_chat(whatsapp_file_path):
