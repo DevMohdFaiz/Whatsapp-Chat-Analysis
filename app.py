@@ -203,9 +203,9 @@ if uploaded_file is not None:
     
     
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "👥 Members Profile", "⏰ Time Patterns", "💬 Messages", "Others"])
-    
-    with tab1:        
-        fig = px.bar(df['sender'].value_counts().sort_values(ascending=False), orientation='v', title='Group members message count')
+    with tab1:      
+        st.subheader("Group members message Count")
+        fig = px.bar(df['sender'].value_counts().sort_values(ascending=False), orientation='v',)
         fig.update_layout(xaxis_title='Members', yaxis_title='No. of messages', showlegend=False, height=1000)
         st.plotly_chart(fig, use_container_width=False)
         col1, col2 = st.columns(2)        
