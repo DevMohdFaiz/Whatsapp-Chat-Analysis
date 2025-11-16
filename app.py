@@ -207,9 +207,9 @@ if uploaded_file is not None:
     with tab1:      
         st.subheader("Group members message Count")
         members_df = df.groupby('sender').size().sort_values(ascending=False)
-        st.write(members_df)
+        # st.write(members_df)
         fig = px.bar(x=members_df.index, y=members_df.values, orientation='v',)
-        fig.update_layout(xaxis_title='Members', yaxis_title='No. of messages', showlegend=False, height=1000)
+        fig.update_layout(xaxis_title='Members', yaxis_title='No. of messages', showlegend=False, height=500)
         st.plotly_chart(fig, use_container_width=False)
         col1, col2 = st.columns(2)        
         with col1:
