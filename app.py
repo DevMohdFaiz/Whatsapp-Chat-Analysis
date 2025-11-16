@@ -18,6 +18,7 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import matplotlib.pyplot as plt
 
 nltk.download('punkt')
+nltk.download('punkt_tab')
 importlib.reload(helpers)
 importlib.reload(st_helpers)
 from helpers import extract_chat_data, preprocess_df, vader_sent_analyzer
