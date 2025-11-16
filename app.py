@@ -2,6 +2,7 @@ import io
 import helpers, st_helpers
 import importlib
 import math
+import nltk
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -16,6 +17,7 @@ from nltk import word_tokenize
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import matplotlib.pyplot as plt
 
+nltk.download('punkt')
 importlib.reload(helpers)
 importlib.reload(st_helpers)
 from helpers import extract_chat_data, preprocess_df, vader_sent_analyzer
@@ -203,7 +205,9 @@ if uploaded_file is not None:
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "👥 Members Profile", "⏰ Time Patterns", "💬 Messages", "Others"])
     with tab1:      
         st.subheader("Group members message Count")
-        fig = px.bar(df['sender'].value_counts().sort_values(ascending=False), orientation='v',)
+        members_df = df.groupby('sender').size().sort_values(ascending=False)
+        st.write(members_df)
+        fig = px.bar(x=members_df.index, y=members_df.values, orientation='v',)
         fig.update_layout(xaxis_title='Members', yaxis_title='No. of messages', showlegend=False, height=1000)
         st.plotly_chart(fig, use_container_width=False)
         col1, col2 = st.columns(2)        
@@ -288,16 +292,16 @@ if uploaded_file is not None:
                 elif volatility < 0.2:
                     traits.append("😌 **Steady Eddie** - Very consistent mood")
                 
-                if avg_msg_length > 100:
-                    traits.append("📝 **The Storyteller** - Loves long messages")
+                if avg_msg_length > 60:
+                    traits.append("📝 **Storyteller** - Loves long messages")
                 elif avg_msg_length < 30:
-                    traits.append("⚡ **Quick Replier** - Short and sweet")
+                    traits.append("⚡ **Straight to the point**")
                 
                 member_msg_pct = len(member_df) / len(df) * 100
-                if member_msg_pct > 30:
-                    traits.append("💬 **Chatty Cathy** - Most active member!")
+                if member_msg_pct > 10:
+                    traits.append("💬 **Active member!**")
                 elif member_msg_pct < 10:
-                    traits.append("🤫 **The Lurker** - Quiet but present")
+                    traits.append("🤫 **Quiet member**")
                                 
                 for trait in traits:
                     st.markdown(trait)
