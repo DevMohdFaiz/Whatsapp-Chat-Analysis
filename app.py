@@ -1,5 +1,5 @@
 import io
-import helpers, st_helpers
+import helpers
 import importlib
 import math
 import nltk
@@ -14,15 +14,13 @@ from zipfile import ZipFile
 from plotly.subplots import make_subplots
 from wordcloud import WordCloud
 from nltk import word_tokenize
-from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+# from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import matplotlib.pyplot as plt
 
 nltk.download('punkt')
 nltk.download('punkt_tab')
 importlib.reload(helpers)
-importlib.reload(st_helpers)
-from helpers import extract_chat_data, preprocess_df, vader_sent_analyzer
-from st_helpers import unzip_chat_for_st, generate_word_cloud
+from helpers import extract_chat_data, preprocess_df, vader_sent_analyzer, unzip_chat_for_st, get_member_texts, generate_word_cloud
 
 
 st.set_page_config(page_title="WhatsApp Chat Analyzer", page_icon="💬", layout="centered", initial_sidebar_state="expanded")
@@ -475,19 +473,22 @@ if uploaded_file is not None:
             st.plotly_chart(fig, use_container_width=True)
     
     with tab4:
-        st.subheader("Messages")
-        group_members= list(df['sender'].unique())
-        chosen_member = st.selectbox("Select a group member to generate a word cloud", options=group_members, index=None)
-        member_messsages = df[df['sender']==chosen_member]['message']
-        member_tokens = word_tokenize(" ".join(t.lower() for t in member_messsages))
-        member_texts = " ".join([t for t in member_tokens if t.isalpha() and t not in ENGLISH_STOP_WORDS])
-        if len(member_texts) >0:
-            word_cloud = generate_word_cloud(member_texts)
-            fig = go.Figure()
-            fig.update_layout(title=f"{chosen_member}'s Frequent Words",margin=dict(l=0, r=0, t=50, b=0),xaxis_visible=False,yaxis_visible=False)
-            fig.add_trace(go.Image(z=word_cloud))
-            fig.update_traces(zsmooth=False)
-            st.plotly_chart(fig, use_container_width=True)                     
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Messages")
+            group_members= list(df['sender'].unique())
+            chosen_member = st.selectbox("Select a group member to see their most used words", options=group_members, index=None)
+            member_messages = df[df['sender']==chosen_member]['message']
+            # member_tokens = word_tokenize(" ".join(t.lower() for t in member_messsages))
+            # member_texts = " ".join([t for t in member_tokens if t.isalpha() and t not in ENGLISH_STOP_WORDS])
+            member_texts = get_member_texts(member_messages)
+            if len(member_texts)>0:
+                fig, ax = plt.subplots(figsize=(5,5))
+                word_cloud = generate_word_cloud(member_texts)
+                ax.imshow(word_cloud)
+                ax.axis('off')
+                ax.set_title(f"{chosen_member}'s most frequent words", fontsize=15)   
+                st.pyplot(fig, use_container_width=False)                 
 
 
     with tab5:

@@ -1,8 +1,19 @@
 import re
+import io
+import nltk
 import pandas as pd
 import numpy as np
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
 from zipfile import ZipFile
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from pathlib import Path
+from wordcloud import WordCloud
+# from nltk.corpus import stopwords
+
+nltk.download('stopwords')
+english_stopwords = set(nltk.corpus.stopwords.words('english'))
 
 vader_analyzer = SentimentIntensityAnalyzer()
 
@@ -17,6 +28,22 @@ def unzip_chat(whatsapp_file_path):
     with open(f"{whatsapp_file_path}.txt", "r", encoding='utf-8') as file:
         whatsapp_chat = file.readlines()
     return whatsapp_chat
+
+def unzip_chat_for_st(uploaded_file):
+    if uploaded_file is not None:
+        zip_bytes = io.BytesIO(uploaded_file.read())
+
+        with ZipFile(zip_bytes, "r") as zip_f:
+            unzipped_file = [f for f in zip_f.namelist() if f.endswith('.txt')]
+            if not unzipped_file:
+                st.warning("No .txt file(s) found!")
+            else:
+                txt_file = unzipped_file[0]
+                with zip_f.open(txt_file, "r") as file:
+                    file_content = file.read().decode("utf-8")
+                    file_content = file_content.splitlines(keepends=True)
+        return file_content
+    
 
 def extract_chat_data(whatsapp_chats):
     """
@@ -83,6 +110,26 @@ def preprocess_df(df: pd.DataFrame):
     return df
 
 
+
+def simple_tokenize(text):
+    return [word for word in re.findall(r"\b[a-zA-Z]+\b", text.lower()) if len(word)>1]
+
+def get_member_texts(member_texts):
+    all_member_words = []
+    for msg in member_texts:
+        words = [w for w in simple_tokenize(msg) if w not in english_stopwords]
+        all_member_words.extend(words)
+        # assert len(all_member_words), len([w for w in all_member_words if w.isalpha()])
+    return " ".join(all_member_words)
+
+@st.cache_data(ttl=3600)
+def generate_word_cloud(words):
+    if len(words)>0:
+        wc = WordCloud(height=600, width=600, colormap='viridis', background_color='white').generate(words)
+        wc = wc.to_image()
+    else:
+        wc = None
+    return wc
 
 
 def vader_sent_analyzer(df):
