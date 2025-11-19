@@ -10,6 +10,7 @@ from zipfile import ZipFile
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from pathlib import Path
 from wordcloud import WordCloud
+from typing import List
 # from nltk.corpus import stopwords
 
 nltk.download('stopwords')
@@ -18,7 +19,7 @@ english_stopwords = set(nltk.corpus.stopwords.words('english'))
 vader_analyzer = SentimentIntensityAnalyzer()
 
 
-def unzip_chat(whatsapp_file_path):
+def unzip_chat(whatsapp_file_path: str):
     """
     Unzips the whatsapp.zip file and returns the loaded .txt file as a list
     Params: whatsapp_file_path= Path of the whatsapp zip file
@@ -29,7 +30,7 @@ def unzip_chat(whatsapp_file_path):
         whatsapp_chat = file.readlines()
     return whatsapp_chat
 
-def unzip_chat_for_st(uploaded_file):
+def unzip_chat_for_st(uploaded_file: ZipFile):
     if uploaded_file is not None:
         zip_bytes = io.BytesIO(uploaded_file.read())
 
@@ -45,7 +46,7 @@ def unzip_chat_for_st(uploaded_file):
         return file_content
     
 
-def extract_chat_data(whatsapp_chats):
+def extract_chat_data(whatsapp_chats: List) -> pd.DataFrame:
     """
     Extracts important information like date, time, sender and message content from whatsapp.zip file 
     and returns a pandas dataframe with the columns: date, time, sender and message
@@ -78,7 +79,7 @@ def extract_chat_data(whatsapp_chats):
                'sender': extracted_data_dict['sender'], 'message': extracted_data_dict['message']})
 
 
-def preprocess_df(df: pd.DataFrame):
+def preprocess_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     Preprocess and clean the dataframe
 
@@ -111,7 +112,7 @@ def preprocess_df(df: pd.DataFrame):
 
 
 
-def simple_tokenize(text):
+def simple_tokenize(text: str) -> List:
     return [word for word in re.findall(r"\b[a-zA-Z]+\b", text.lower()) if len(word)>1]
 
 def get_member_texts(member_texts):
@@ -132,7 +133,7 @@ def generate_word_cloud(words):
     return wc
 
 
-def vader_sent_analyzer(df):
+def analyze_sentiment(df: pd.DataFrame) -> pd.DataFrame:
     messages = df['message']
     sentiment_results_dict = {'sentiment': [], 'sentiment_score': []}
     for msg in messages:
