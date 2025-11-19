@@ -133,6 +133,7 @@ with st.sidebar:
     - Chat trends over time
     - Group Member profile
     - Time-based patterns
+    - AI Powered Insights
     """)
 # st.set_page_config(page_title="Performance Dashboard", layout="wide")
 
@@ -220,7 +221,7 @@ if uploaded_file is not None:
         st.markdown("---")
         
         
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Overview", "👥 Members Profile", "⏰ Time Patterns", "💬 Messages", "Others", "AI assistant"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Overview", "👥 Members Profile", "⏰ Time Patterns", "💬 Messages", "Others", "AI Assistant"])
         with tab1:      
             st.subheader("Group members message Count")
             members_df = df.groupby('sender').size().sort_values(ascending=False)
@@ -608,11 +609,8 @@ else:
     - 👥 The most active and least active group members
     - ⏰ Chat patterns over time
     - 💬 Most emotional messages
+    - AI-powered chat insights    
     
-    ### Privacy Note:
-    
-    🔒 Your data is processed locally and **not stored** on any server. 
-    Everything happens in your browser session.
     """, unsafe_allow_html=True)
 
 st.markdown("---")
