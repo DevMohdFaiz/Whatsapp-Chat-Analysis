@@ -548,7 +548,7 @@ if uploaded_file is not None:
                 st.session_state.chat_history= []
                 st.session_state.chat_context = None
                 st.rerun()
-            st.text(st.session_state['chat_context'])
+            # st.text(st.session_state['chat_context'])
             with st.container():
                 if len(st.session_state.chat_history)==0:
                     st.info("Chat history is empty")
