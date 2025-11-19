@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 from groq import Groq
+from dotenv import get_key
 from typing import Dict, Optional, List, Any
 
 
@@ -187,8 +188,10 @@ def groq_chat(
     """
     try:
         api_key = os.getenv("GROQ_API_KEY")
-    except:
+    except OSError:
         api_key = st.secrets["GROQ_API_KEY"]
+    except:
+        api_key = get_key(".env", "GROQ_API_KEY")
     if not api_key:
         raise EnvironmentError(
             "GROQ_API_KEY not set in environment. "

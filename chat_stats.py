@@ -11,7 +11,7 @@ from ai_integration import _get_groq_client, _call_groq_api
 def generate_basic_stats(df: pd.DataFrame)->Dict[str, str]:
     if df.empty:
         print(f"Empty Dataframe")
-    sample_msg = df['message'].sample(100).tolist()
+    sample_msg = df['message'].sample(300).tolist()
     basic_stats = {
         'total_messages': len(df),
         'date_range_start': df['date'].min(),

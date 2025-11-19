@@ -527,7 +527,7 @@ if uploaded_file is not None:
                 ).properties(width=500, height=550, title=f'{label} active group members').configure_axis(grid=False)
                 st.altair_chart(chart, use_container_width=True)
 
-
+        
         with tab6:
             st.subheader("AI Assistant")
             if st.session_state.chat_ready:
